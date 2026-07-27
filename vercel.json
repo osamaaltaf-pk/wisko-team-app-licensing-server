@@ -1,7 +1,9 @@
 {
   "version": 2,
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)",     "destination": "/public/$1" }
+  "cleanUrls": true,
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/analytics", "dest": "/analytics.html" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

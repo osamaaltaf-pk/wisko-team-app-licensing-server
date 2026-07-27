@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Omni Sketches — Usage Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0c14; --surface: #111320; --card: #161929;
+    --border: rgba(255,255,255,0.08); --accent: #6c63ff; --accent2: #00bfa5;
+    --text: #e8eaf6; --muted: #8892b0; --success: #00e676; --error: #ff5252; --warn:#ffab40;
+  }
+  body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:32px 20px 80px; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+  p.sub { color: var(--muted); margin-bottom: 24px; }
+  .bar { display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
+  input, button { font-family:inherit; font-size:14px; border-radius:10px; border:1px solid var(--border); }
+  input { flex:1; min-width:220px; padding:12px 14px; background:var(--card); color:var(--text); }
+  input:focus { outline:none; border-color:var(--accent); }
+  button { padding:12px 20px; background:var(--accent); color:#fff; border:none; cursor:pointer; font-weight:600; }
+  button:hover { filter:brightness(1.1); }
+  button:disabled { opacity:.6; cursor:default; }
+  .status { margin-bottom: 16px; padding: 10px 14px; border-radius: 10px; display:none; font-size: 13px; }
+  .status.show { display:block; }
+  .status.err { background: rgba(255,82,82,0.12); color: var(--error); border:1px solid rgba(255,82,82,0.3); }
+  table { width:100%; border-collapse: collapse; background:var(--surface); border-radius:14px; overflow:hidden; border:1px solid var(--border); }
+  th, td { text-align:left; padding:12px 14px; font-size:13px; border-bottom:1px solid var(--border); }
+  th { color:var(--muted); font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:.03em; background:var(--card); }
+  tr:last-child td { border-bottom:none; }
+  .pill { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:600; margin:2px 4px 2px 0; background:rgba(108,99,255,0.15); color:#b3aeff; border:1px solid rgba(108,99,255,0.3); }
+  .status-active { color: var(--success); }
+  .status-expired, .status-revoked { color: var(--error); }
+  .empty { color: var(--muted); text-align:center; padding: 40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📊 Usage Analytics</h1>
+  <p class="sub">Total generations per user, broken down by app mode (studio / canvas / auto / agent / tts...)</p>
+
+  <div class="bar">
+    <input id="adminKey" type="password" placeholder="Admin Secret Key" />
+    <input id="filterGmail" type="text" placeholder="Filter by gmail (optional)" />
+    <input id="filterKey" type="text" placeholder="Filter by license key (optional)" />
+    <button id="loadBtn" onclick="loadAnalytics()">Load</button>
+  </div>
+
+  <div id="statusBox" class="status"></div>
+  <div id="results"></div>
+</div>
+
+<script>
+async function loadAnalytics() {
+  const adminKey = document.getElementById('adminKey').value.trim();
+  const gmail = document.getElementById('filterGmail').value.trim();
+  const licenseKey = document.getElementById('filterKey').value.trim();
+  const btn = document.getElementById('loadBtn');
+  const statusBox = document.getElementById('statusBox');
+  const results = document.getElementById('results');
+
+  if (!adminKey) {
+    statusBox.textContent = 'Enter the Admin Secret Key first.';
+    statusBox.className = 'status show err';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Loading...';
+  statusBox.className = 'status';
+  results.innerHTML = '';
+
+  try {
+    const body = { admin_key: adminKey };
+    if (gmail) body.gmail = gmail;
+    if (licenseKey) body.license_key = licenseKey;
+
+    const resp = await fetch('/api/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+
+    if (!resp.ok || data.status !== 'success') {
+      statusBox.textContent = data.message || 'Failed to load analytics.';
+      statusBox.className = 'status show err';
+      btn.disabled = false; btn.textContent = 'Load';
+      return;
+    }
+
+    if (!data.users.length) {
+      results.innerHTML = '<div class="empty">No usage data yet.</div>';
+    } else {
+      let rows = data.users.map(u => {
+        const modes = u.modes.length
+          ? u.modes.map(m => `<span class="pill">${m.mode}: ${m.total_generations}</span>`).join('')
+          : '<span style="color:var(--muted)">no generations yet</span>';
+        const statusClass = u.status === 'active' ? 'status-active' : 'status-expired';
+        return `<tr>
+          <td>${u.gmail || '<span style="color:var(--muted)">unbound</span>'}</td>
+          <td><code>${u.license_key}</code></td>
+          <td>${u.plan_name || ''}</td>
+          <td class="${statusClass}">${u.status}</td>
+          <td>${u.total_generations}</td>
+          <td>${u.generations_this_month} / ${u.monthly_gen_limit}</td>
+          <td>${modes}</td>
+          <td>${u.last_active_at ? new Date(u.last_active_at).toLocaleString() : '—'}</td>
+        </tr>`;
+      }).join('');
+
+      results.innerHTML = `<table>
+        <thead><tr>
+          <th>Gmail</th><th>License Key</th><th>Plan</th><th>Status</th>
+          <th>Total Gens</th><th>This Month</th><th>By Mode</th><th>Last Active</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+  } catch (e) {
+    statusBox.textContent = 'Network error: ' + e.message;
+    statusBox.className = 'status show err';
+  }
+  btn.disabled = false; btn.textContent = 'Load';
+}
+</script>
+</body>
+</html>
