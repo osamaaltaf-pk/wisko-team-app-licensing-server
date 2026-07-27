@@ -38,6 +38,7 @@
 </head>
 <body>
 <div class="wrap">
+  <a href="/" style="color:var(--accent2); text-decoration:none; font-weight:600; display:inline-block; margin-bottom:16px; font-size:13px;">← Back to Control Center Portal</a>
   <h1>📊 Usage Analytics</h1>
   <p class="sub">Total generations per user, broken down by app mode (studio / canvas / auto / agent / tts...)</p>
 
@@ -53,6 +54,15 @@
 </div>
 
 <script>
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const secret = urlParams.get('admin_key') || urlParams.get('secret') || localStorage.getItem('admin_secret_key');
+  if (secret) {
+    document.getElementById('adminKey').value = secret;
+    loadAnalytics();
+  }
+});
+
 async function loadAnalytics() {
   const adminKey = document.getElementById('adminKey').value.trim();
   const gmail = document.getElementById('filterGmail').value.trim();

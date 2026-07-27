@@ -335,6 +335,7 @@
   <!-- Tabs -->
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('keygen', this)">🔑 Key Generator</button>
+    <button class="tab-btn"       onclick="switchTab('analytics', this)">📊 Usage Analytics</button>
     <button class="tab-btn"       onclick="switchTab('docs',   this)">📋 About &amp; Docs</button>
     <button class="tab-btn"       onclick="switchTab('dev',    this)">💻 Developer Hub</button>
   </div>
@@ -386,6 +387,39 @@
       <div class="result-meta" id="result-meta"></div>
     </div>
 
+  </div>
+
+  <!-- ─── USAGE ANALYTICS TAB ─── -->
+  <div id="tab-analytics" class="tab-panel">
+    <div class="field">
+      <label class="field-label">Admin Secret Key</label>
+      <input type="password" id="analytics-admin-key" placeholder="Enter Admin Secret Key" oninput="syncAdminKey(this.value)" />
+    </div>
+
+    <div class="row-2">
+      <div class="field">
+        <label class="field-label">Filter Gmail (Optional)</label>
+        <input type="text" id="analytics-filter-gmail" placeholder="user@gmail.com" />
+      </div>
+      <div class="field">
+        <label class="field-label">Filter License Key (Optional)</label>
+        <input type="text" id="analytics-filter-key" placeholder="OMNI-SK-..." />
+      </div>
+    </div>
+
+    <button id="analytics-btn" class="btn-generate" onclick="fetchAnalyticsInline()">
+      📊 Load Analytics Data
+    </button>
+
+    <div style="margin-top: 14px;">
+      <a class="dev-link" href="#" onclick="openFullAnalytics(event)">
+        <span>↗️ Open Full Screen Analytics Dashboard</span>
+        <span class="arrow">↗</span>
+      </a>
+    </div>
+
+    <div id="analytics-status" class="status" style="display:none; margin-top:16px;"></div>
+    <div id="analytics-results" style="margin-top:16px;"></div>
   </div>
 
   <!-- ─── ABOUT & DOCS TAB ─── -->
@@ -583,6 +617,109 @@
       btn.textContent = '✅ Copied!';
       setTimeout(() => btn.textContent = '📋 Copy', 2000);
     });
+  }
+
+  // ── Sync Admin Secret Key inputs & localStorage ─────────────────────
+  function syncAdminKey(val) {
+    const k1 = document.getElementById('admin-key');
+    const k2 = document.getElementById('analytics-admin-key');
+    if (k1 && k1.value !== val) k1.value = val;
+    if (k2 && k2.value !== val) k2.value = val;
+    if (val) localStorage.setItem('admin_secret_key', val);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const k1 = document.getElementById('admin-key');
+    const k2 = document.getElementById('analytics-admin-key');
+    const saved = localStorage.getItem('admin_secret_key') || '';
+    if (saved) {
+      if (k1) k1.value = saved;
+      if (k2) k2.value = saved;
+    }
+    if (k1) k1.addEventListener('input', (e) => syncAdminKey(e.target.value));
+  });
+
+  function openFullAnalytics(e) {
+    if (e) e.preventDefault();
+    const key = (document.getElementById('admin-key')?.value || document.getElementById('analytics-admin-key')?.value || '').trim();
+    if (key) localStorage.setItem('admin_secret_key', key);
+    window.open('/analytics' + (key ? '?secret=' + encodeURIComponent(key) : ''), '_blank');
+  }
+
+  async function fetchAnalyticsInline() {
+    const adminKey = (document.getElementById('analytics-admin-key')?.value || document.getElementById('admin-key')?.value || '').trim();
+    const gmail = (document.getElementById('analytics-filter-gmail')?.value || '').trim();
+    const licenseKey = (document.getElementById('analytics-filter-key')?.value || '').trim();
+    const btn = document.getElementById('analytics-btn');
+    const statusBox = document.getElementById('analytics-status');
+    const results = document.getElementById('analytics-results');
+
+    if (!adminKey) {
+      statusBox.textContent = 'Please enter the Admin Secret Key.';
+      statusBox.style.display = 'block';
+      statusBox.className = 'status show err';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Loading Data...';
+    statusBox.style.display = 'none';
+    results.innerHTML = '';
+
+    try {
+      const body = { admin_key: adminKey };
+      if (gmail) body.gmail = gmail;
+      if (licenseKey) body.license_key = licenseKey;
+
+      const resp = await fetch('/api/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await resp.json();
+
+      if (!resp.ok || data.status !== 'success') {
+        statusBox.textContent = data.message || 'Failed to load analytics.';
+        statusBox.style.display = 'block';
+        statusBox.className = 'status show err';
+        return;
+      }
+
+      if (!data.users || !data.users.length) {
+        results.innerHTML = '<div style="text-align:center; padding:30px; color:var(--muted);">No usage records found.</div>';
+      } else {
+        let rows = data.users.map(u => {
+          const modes = u.modes && u.modes.length
+            ? u.modes.map(m => `<span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; margin:2px; background:rgba(108,99,255,0.15); color:#b3aeff; border:1px solid rgba(108,99,255,0.3);">${m.mode}: ${m.total_generations}</span>`).join('')
+            : '<span style="color:var(--muted)">no gens yet</span>';
+          const statusStyle = u.status === 'active' ? 'color:var(--success);' : 'color:var(--error);';
+          return `<tr>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">${u.gmail || '<span style="color:var(--muted)">unbound</span>'}</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);"><code style="font-size:11px; font-family:monospace;">${u.license_key}</code></td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">${u.plan_name || 'Pro'}</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border); ${statusStyle}">${u.status}</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);"><b>${u.total_generations}</b></td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">${u.generations_this_month} / ${u.monthly_gen_limit}</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">${modes}</td>
+          </tr>`;
+        }).join('');
+
+        results.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; margin-top:10px; background:var(--surface); border-radius:10px; overflow:hidden; border:1px solid var(--border);">
+          <thead><tr style="background:var(--card); font-size:11px; text-transform:uppercase; color:var(--muted);">
+            <th style="padding:10px; text-align:left;">Gmail</th><th style="padding:10px; text-align:left;">License Key</th><th style="padding:10px; text-align:left;">Plan</th><th style="padding:10px; text-align:left;">Status</th>
+            <th style="padding:10px; text-align:left;">Total</th><th style="padding:10px; text-align:left;">Month</th><th style="padding:10px; text-align:left;">Modes</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`;
+      }
+    } catch (err) {
+      statusBox.textContent = 'Network error: ' + err.message;
+      statusBox.style.display = 'block';
+      statusBox.className = 'status show err';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '📊 Load Analytics Data';
+    }
   }
 </script>
 </body>
