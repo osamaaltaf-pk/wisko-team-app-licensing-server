@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Omni Sketches — Enterprise Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0c14;
+      --surface:   #111320;
+      --card:      #161929;
+      --border:    rgba(255,255,255,0.08);
+      --accent:    #6c63ff;
+      --accent2:   #00bfa5;
+      --text:      #e8eaf6;
+      --muted:     #8892b0;
+      --success:   #00e676;
+      --error:     #ff5252;
+      --warn:      #ffab40;
+      --radius:    14px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* Ambient background blobs */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 20%, rgba(108,99,255,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 80% 80%, rgba(0,191,165,0.10) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .portal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 520px;
+      padding: 40px 36px 36px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(108,99,255,0.1);
+      position: relative;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .app-icon {
+      width: 64px; height: 64px;
+      background: linear-gradient(135deg, #6c63ff 0%, #00bfa5 100%);
+      border-radius: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 14px;
+      box-shadow: 0 8px 32px rgba(108,99,255,0.4);
+    }
+    .app-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+    .app-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-radius: 9px;
+      color: var(--muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 9px 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #6c63ff, #8b5cf6);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(108,99,255,0.4);
+    }
+
+    /* Tab panels */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Form */
+    .field { margin-bottom: 18px; }
+    .field-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: block;
+    }
+    .field input,
+    .field select {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none;
+    }
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+    }
+    .field select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892b0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+      cursor: pointer;
+    }
+    .field select option { background: var(--card); }
+
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Generate button */
+    .btn-generate {
+      width: 100%;
+      background: linear-gradient(135deg, #6c63ff 0%, #8b5cf6 100%);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 15px;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      margin-top: 6px;
+      transition: all 0.2s;
+      box-shadow: 0 8px 24px rgba(108,99,255,0.4);
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-generate:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(108,99,255,0.55);
+    }
+    .btn-generate:active { transform: translateY(0); }
+    .btn-generate:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* Result card */
+    #result-box {
+      display: none;
+      margin-top: 22px;
+      background: var(--card);
+      border: 1px solid rgba(0,230,118,0.25);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    #result-box.error-box { border-color: rgba(255,82,82,0.3); }
+    .result-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--success);
+      margin-bottom: 10px;
+    }
+    .error-box .result-label { color: var(--error); }
+    .key-display {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(108,99,255,0.1);
+      border: 1px solid rgba(108,99,255,0.2);
+      border-radius: 9px;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 1px;
+      color: var(--accent2);
+      word-break: break-all;
+    }
+    .btn-copy {
+      background: rgba(108,99,255,0.2);
+      border: 1px solid rgba(108,99,255,0.3);
+      border-radius: 7px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 6px 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .btn-copy:hover { background: rgba(108,99,255,0.35); }
+    .result-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+      line-height: 1.7;
+    }
+    .result-meta span { color: var(--text); font-weight: 500; }
+
+    /* Docs / Dev Hub panels */
+    .info-section { margin-bottom: 22px; }
+    .info-section h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent2);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .info-section p, .info-section li {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .info-section ol, .info-section ul { padding-left: 18px; }
+    .info-section code {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 7px;
+      font-size: 12px;
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+    }
+    .env-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .env-table td {
+      font-size: 12px;
+      padding: 7px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .env-table td:first-child { color: var(--accent); font-family: monospace; }
+    .env-table td:last-child  { color: var(--muted); }
+
+    .dev-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .dev-link:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.12);
+    }
+    .dev-link .arrow { color: var(--muted); }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Status dot in header */
+    .status-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      background: var(--success);
+      border-radius: 50%;
+      margin-right: 5px;
+      box-shadow: 0 0 6px var(--success);
+    }
+  </style>
+</head>
+<body>
+
+<div class="portal-card">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="app-icon">✏️</div>
+    <div class="app-title">Omni Sketches</div>
+    <div class="app-sub"><span class="status-dot"></span>Enterprise Portal &amp; Control Center</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('keygen', this)">🔑 Key Generator</button>
+    <button class="tab-btn"       onclick="switchTab('docs',   this)">📋 About &amp; Docs</button>
+    <button class="tab-btn"       onclick="switchTab('dev',    this)">💻 Developer Hub</button>
+  </div>
+
+  <!-- ─── KEY GENERATOR TAB ─── -->
+  <div id="tab-keygen" class="tab-panel active">
+
+    <div class="field">
+      <label class="field-label">Admin Secret Key</label>
+      <input type="password" id="admin-key" placeholder="Enter Admin Secret Key" />
+    </div>
+
+    <div class="field">
+      <label class="field-label">Licensing Plan</label>
+      <select id="plan-name" onchange="onPlanChange()">
+        <option value="Pro">Pro (Single User)</option>
+        <option value="Pro 3 Devices">Pro (3 Devices)</option>
+        <option value="Enterprise">Enterprise</option>
+      </select>
+    </div>
+
+    <div class="row-2">
+      <div class="field">
+        <label class="field-label">Validity (Days)</label>
+        <input type="number" id="validity-days" value="30" min="1" />
+      </div>
+      <div class="field">
+        <label class="field-label">Credits / Limits</label>
+        <input type="number" id="monthly-gen-limit" value="50" min="1" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Max Registered Devices</label>
+      <input type="number" id="max-devices" value="1" min="1" />
+    </div>
+
+    <button class="btn-generate" id="gen-btn" onclick="generateKey()">
+      ⚡ Generate Activation Code
+    </button>
+
+    <!-- Result -->
+    <div id="result-box">
+      <div class="result-label" id="result-label">✅ Key Generated Successfully</div>
+      <div class="key-display" id="key-display">
+        <span id="key-text">OMNI-SK-XXXX-XXXX-XXXX-XXXX</span>
+        <button class="btn-copy" onclick="copyKey()">📋 Copy</button>
+      </div>
+      <div class="result-meta" id="result-meta"></div>
+    </div>
+
+  </div>
+
+  <!-- ─── ABOUT & DOCS TAB ─── -->
+  <div id="tab-docs" class="tab-panel">
+    <div class="info-section">
+      <h3>🚀 About Omni Sketches</h3>
+      <p>Omni Sketches converts any image into a whiteboard sketch animation video, fully offline. Available for Windows, Android (APK) and as a browser web app.</p>
+    </div>
+    <div class="info-section">
+      <h3>✨ Product Features</h3>
+      <ul>
+        <li><strong>Offline Rendering</strong> — Generates whiteboard sketch videos fully offline (Windows, Android, Web).</li>
+        <li><strong>Rich Hand Library</strong> — 22 drawing styles across diverse demographics (kids, adults, elders, light/dark skin).</li>
+        <li><strong>Interactive Controls</strong> — Precision sliders for animation speed, frame rate, and skip-rates.</li>
+        <li><strong>Colorization</strong> — Option to transition into full-color image at the end of the whiteboard drawing.</li>
+        <li><strong>Batch &amp; Sequential Processing</strong> — Queue multiple sketch animations to run sequentially.</li>
+        <li><strong>Auto Pen-Tip Detection</strong> — Algorithmic calculation of pen nib offsets for exact canvas alignment.</li>
+      </ul>
+    </div>
+    <div class="info-section">
+      <h3>📦 How to Issue a License</h3>
+      <ol>
+        <li>Choose the buyer's plan from the dropdown</li>
+        <li>Set validity days (30 = monthly, 365 = yearly)</li>
+        <li>Set credits = generations allowed per month</li>
+        <li>Click <strong>Generate Activation Code</strong></li>
+        <li>Copy the <code>OMNI-SK-…</code> key and send to the buyer</li>
+        <li>Buyer enters it on first app launch to activate</li>
+      </ol>
+    </div>
+    <div class="info-section">
+      <h3>🔑 Key Format</h3>
+      <p>All keys follow the format: <code>OMNI-SK-XXXX-XXXX-XXXX-XXXX</code></p>
+    </div>
+  </div>
+
+  <!-- ─── DEVELOPER HUB TAB ─── -->
+  <div id="tab-dev" class="tab-panel">
+    <div class="info-section">
+      <h3>🛠️ Quick Links</h3>
+    </div>
+    <a class="dev-link" href="https://supabase.com/dashboard" target="_blank">
+      <span>🗄️ Supabase Dashboard — Manage DB &amp; Tables</span>
+      <span class="arrow">↗</span>
+    </a>
+    <a class="dev-link" href="https://vercel.com/dashboard" target="_blank">
+      <span>🚀 Vercel Dashboard — Deployments &amp; Logs</span>
+      <span class="arrow">↗</span>
+    </a>
+    <a class="dev-link" href="https://github.com/osamaaltaf-pk" target="_blank">
+      <span>🐙 GitHub — Source Repository</span>
+      <span class="arrow">↗</span>
+    </a>
+    <div class="info-section" style="margin-top:20px;">
+      <h3>⚙️ Vercel Environment Variables</h3>
+      <table class="env-table">
+        <tr><td>SUPABASE_URL</td><td>Your Supabase project URL</td></tr>
+        <tr><td>SUPABASE_SERVICE_ROLE_KEY</td><td>Service-role secret (never expose)</td></tr>
+        <tr><td>ADMIN_SECRET_KEY</td><td>Your portal admin password</td></tr>
+      </table>
+    </div>
+    <div class="info-section" style="margin-top:20px;">
+      <h3>📡 API Endpoints</h3>
+      <ul>
+        <li><code>POST /api/activate</code> — First-time device activation</li>
+        <li><code>POST /api/verify</code> — App-start license check</li>
+        <li><code>POST /api/generate-key</code> — Admin key generation</li>
+        <li><code>POST /api/track-generation</code> — Deduct 1 credit per generation</li>
+        <li><code>POST /api/analytics</code> — Admin usage analytics (per user, per mode)</li>
+      </ul>
+    </div>
+    <div class="info-section" style="margin-top:20px;">
+      <a class="dev-link" href="/analytics.html">
+        <span>📊 Open Usage Analytics Dashboard</span>
+        <span class="arrow">↗</span>
+      </a>
+    </div>
+
+    <div class="info-section" style="margin-top:20px;">
+      <h3>👨‍💻 Developer Profile &amp; Contact</h3>
+      <a class="dev-link" href="https://github.com/osamaaltaf-pk" target="_blank">
+        <span>🐙 GitHub Profile (osamaaltaf-pk)</span>
+        <span class="arrow">↗</span>
+      </a>
+      <a class="dev-link" href="https://linkedin.com/in/osamaaltafpk" target="_blank">
+        <span>💼 LinkedIn Profile (osamaaltafpk)</span>
+        <span class="arrow">↗</span>
+      </a>
+      <a class="dev-link" href="mailto:osamaaltaf.pk@gmail.com">
+        <span>📧 Email: osamaaltaf.pk@gmail.com</span>
+        <span class="arrow">↗</span>
+      </a>
+      <a class="dev-link" href="https://wa.me/923187661096" target="_blank">
+        <span>💬 WhatsApp: +923187661096</span>
+        <span class="arrow">↗</span>
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── Plan presets ──────────────────────────────────────────────────────
+  const PLAN_PRESETS = {
+    'Pro':           { max_devices: 1,  monthly_gen_limit: 50,     validity_days: 30  },
+    'Pro 3 Devices': { max_devices: 3,  monthly_gen_limit: 150,    validity_days: 30  },
+    'Enterprise':    { max_devices: 10, monthly_gen_limit: 999999, validity_days: 365 },
+  };
+
+  function onPlanChange() {
+    const plan    = document.getElementById('plan-name').value;
+    const preset  = PLAN_PRESETS[plan];
+    if (!preset) return;
+    document.getElementById('max-devices').value       = preset.max_devices;
+    document.getElementById('monthly-gen-limit').value = preset.monthly_gen_limit;
+    document.getElementById('validity-days').value     = preset.validity_days;
+  }
+
+  // ── Tab switcher ──────────────────────────────────────────────────────
+  function switchTab(id, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ── Generate key ──────────────────────────────────────────────────────
+  async function generateKey() {
+    const adminKey  = document.getElementById('admin-key').value.trim();
+    const planName  = document.getElementById('plan-name').value;
+    const validity  = parseInt(document.getElementById('validity-days').value)     || 30;
+    const credits   = parseInt(document.getElementById('monthly-gen-limit').value) || 50;
+    const devices   = parseInt(document.getElementById('max-devices').value)       || 1;
+
+    if (!adminKey) {
+      showResult(false, null, { message: 'Please enter the Admin Secret Key.' });
+      return;
+    }
+
+    const btn = document.getElementById('gen-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Generating…';
+
+    try {
+      const resp = await fetch('/api/generate-key', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          admin_key:         adminKey,
+          plan_name:         planName,
+          validity_days:     validity,
+          monthly_gen_limit: credits,
+          max_devices:       devices
+        })
+      });
+      const data = await resp.json();
+      showResult(resp.ok, data, data);
+    } catch (err) {
+      showResult(false, null, { message: 'Network error: ' + err.message });
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '⚡ Generate Activation Code';
+    }
+  }
+
+  function showResult(success, data, raw) {
+    const box    = document.getElementById('result-box');
+    const label  = document.getElementById('result-label');
+    const keyEl  = document.getElementById('key-text');
+    const meta   = document.getElementById('result-meta');
+
+    box.style.display = 'block';
+    if (success && data?.license_key) {
+      box.className = '';
+      label.textContent = '✅ Key Generated Successfully';
+      keyEl.textContent = data.license_key;
+      meta.innerHTML = `
+        Plan: <span>${data.plan_name}</span> &nbsp;|&nbsp;
+        Validity: <span>${data.validity_days} days</span> &nbsp;|&nbsp;
+        Credits/mo: <span>${data.monthly_gen_limit === 999999 ? 'Unlimited' : data.monthly_gen_limit}</span> &nbsp;|&nbsp;
+        Devices: <span>${data.max_devices}</span>
+      `;
+    } else {
+      box.className = 'error-box';
+      label.textContent = '❌ Error';
+      keyEl.textContent = raw?.message || 'Unknown error';
+      meta.innerHTML = '';
+    }
+  }
+
+  function copyKey() {
+    const key = document.getElementById('key-text').textContent;
+    navigator.clipboard.writeText(key).then(() => {
+      const btn = document.querySelector('.btn-copy');
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => btn.textContent = '📋 Copy', 2000);
+    });
+  }
+</script>
+</body>
+</html>
